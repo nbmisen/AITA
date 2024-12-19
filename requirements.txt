@@ -1,0 +1,37 @@
+<<<<<<< HEAD
+bilibili-api-python>=16.1.1
+aiohttp>=3.8.0
+certifi>=2023.7.22
+openai>=1.12.0
+=======
+# API和模型相关
+openai  # OpenAI兼容接口
+bilibili-api-python  # B站API
+python-dotenv  # 环境变量管理
+
+# LLM框架
+llama-index  # LlamaIndex核心包
+llama-index-embeddings-huggingface  # HuggingFace嵌入
+llama-index-llms-openai-like  # OpenAI兼容LLM
+
+# 文件处理
+python-pptx  # PPT处理
+PyPDF2  # PDF处理
+Pillow  # 图像处理
+
+# Web界面
+streamlit  # Web UI框架
+fastapi  # API服务器
+uvicorn  # ASGI服务器
+
+# 工具包
+numpy  # 数值计算
+pandas  # 数据处理
+requests  # HTTP请求
+tqdm  # 进度条
+
+# 开发工具
+pytest  # 测试框架
+black  # 代码格式化
+isort  # Import排序 
+>>>>>>> new

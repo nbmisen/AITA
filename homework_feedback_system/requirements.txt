@@ -1,0 +1,10 @@
+streamlit>=1.24.0
+llama-index>=0.8.11
+python-dotenv>=1.0.0
+PyPDF2>=3.0.0
+pillow>=10.0.0
+transformers>=4.31.0
+torch>=2.0.0
+openai-like>=1.0.0
+python-magic>=0.4.27
+pdf2image>=1.16.3 
