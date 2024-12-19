@@ -20,46 +20,49 @@ def init_client():
     )
     return client
 
-def analyze_homework(text_content, images, client, homework_requirements=None):
+def analyze_homework(pdf_processor, client, homework_requirements=None):
     """分析作业内容并提供反馈"""
-    requirements_text = f"作业要求：\n{homework_requirements}" if homework_requirements else ""
+    # 构建system prompt
+    system_prompt = """你是一个专业的作业评价助手。
+    
+作业要求：
+{}
+
+请根据作业要求和内容提供详细的评价，包含以下方面：
+1. 作业要求完成情况
+2. 内容完整性评估
+3. 作业质量评估
+4. 具体的优点
+5. 需要改进的地方
+6. 建议和改进方向
+
+请特别关注作业是否满足作业要求中的具体标准。""".format(homework_requirements if homework_requirements else "无具体要求")
+
+    # 构建有序的内容列表
+    content_items = []
+    for block in pdf_processor.content_blocks:
+        if block['type'] == 'text':
+            content_items.append({
+                "type": "text",
+                "text": block['content']
+            })
+        else:
+            img_base64 = block['content'].text.strip()
+            content_items.append({
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:image/jpeg;base64,{img_base64}"
+                }
+            })
     
     messages = [
         {
             "role": "system",
-            "content": "你是一个专业的作业评价助手，请根据作业要求和内容提供详细的评价。"
+            "content": system_prompt
         },
         {
             "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": f"""
-                    {requirements_text}
-                    
-                    作业文字内容：
-                    {text_content}
-                    作业图片内容，参考图片
-                    
-                    请提供以下方面的详细反馈：
-                    1. 作业要求完成情况
-                    2. 内容完整性评估
-                    3. 作业质量评估
-                    4. 具体的优点
-                    5. 需要改进的地方
-                    6. 建议和改进方向
-                    
-                    请特别关注作业是否满足作业要求中的具体标准。
-                    """
-                }
-            ] + [
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{img}"
-                    }
-                } for img in images
-            ]
+            "content": content_items
         }
     ]
     
@@ -129,15 +132,12 @@ def main():
         st.write("### 📄 分析结果")
         
         with st.spinner('正在分析PDF文件...'):
-            # 使用PDF处理器提取文本和图片
-            text_content, image_documents = pdf_processor.process_pdf(uploaded_file)
+            # 处理PDF文件
+            pdf_processor.process_pdf(uploaded_file)
             
-            if text_content or image_documents:
-                # 获取所有图片的base64编码
-                images = [img_doc.text.strip() for img_doc in image_documents]
-                
+            if pdf_processor.content_blocks:
                 # 分析作业内容
-                analysis = analyze_homework(text_content, images, client, selected_requirements)
+                analysis = analyze_homework(pdf_processor, client, selected_requirements)
                 st.write("### ✍️ 作业评价")
                 st.markdown(analysis)
             else:
@@ -148,15 +148,15 @@ def main():
     user_input = st.text_input("输入你的问题:")
     if user_input and uploaded_file:
         with st.spinner("AI思考中..."):
-            messages = [
-                {"role": "system", "content": "你是一个专业的作业评价助手。"},
-                {"role": "user", "content": f"""
-                基于以下作业内容回答问题：
-                作业要求：{selected_requirements}
-                作业内容：{text_content}
-                问题：{user_input}
-                """}
-            ]
+            # 构建包含历史记录的消息列表
+            messages = []
+            
+            # 添加历史对话记录
+            for role, content in st.session_state.chat_history[-6:]:  # 保留最近3轮对话
+                messages.append({"role": role, "content": content})
+                
+            # 添加当前用户问题
+            messages.append({"role": "user", "content": user_input})
             
             response = client.chat.completions.create(
                 model=model,

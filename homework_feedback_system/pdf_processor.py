@@ -15,20 +15,13 @@ class PDFProcessor:
         self.max_image_size = 10 * 1024 * 1024  # 10MB
         self.min_image_dimension = 10
         self.max_image_dimension = 2000
+        self.content_blocks = []
     
     def process_pdf(self, pdf_file):
-        """处理PDF文件，提取文本和图片
-        
-        Args:
-            pdf_file: 上传的PDF文件对象
-            
-        Returns:
-            tuple: (text_content, image_documents)
-            - text_content: 提取的文本内容
-            - image_documents: 提取的图片文档列表
-        """
+        """处理PDF文件，按顺序提取文本和图片"""
         text_content = ""
         image_documents = []
+        self.content_blocks = []
         
         if not pdf_file:
             st.error("请上传PDF文件")
@@ -44,22 +37,40 @@ class PDFProcessor:
             doc = fitz.open(temp_path)
             
             # 遍历每一页
-            for page_num, page in enumerate(doc, 1):
-                # 提取文本
-                text_content += page.get_text() + "\n"
+            for page in doc:
+                # 获取文本块
+                text_blocks = page.get_text("blocks")
+                for block in text_blocks:
+                    self.content_blocks.append({
+                        'type': 'text',
+                        'content': block[4]
+                    })
                 
                 # 提取图片
                 image_list = page.get_images()
-                
-                # 遍历页面中的所有图片
                 for img_num, img in enumerate(image_list, 1):
                     try:
-                        image_doc = self._process_single_image(doc, img, page_num, img_num)
+                        image_doc = self._process_single_image(doc, img, 1, img_num)  # 页码设为1，因为我们不需要追踪页码
                         if image_doc:
+                            self.content_blocks.append({
+                                'type': 'image',
+                                'content': image_doc
+                            })
                             image_documents.append(image_doc)
                     except Exception as e:
-                        print(f"处理第 {page_num} 页的第 {img_num} 张图片时出错: {e}")
+                        print(f"处理图片时出错: {e}")
                         continue
+            
+            # 生成有序的文档内容
+            ordered_content = []
+            for block in self.content_blocks:
+                if block['type'] == 'text':
+                    ordered_content.append(block['content'])
+                else:
+                    # 在文本中标记图片位置
+                    ordered_content.append(f"[IMAGE_{len(image_documents)}]")
+            
+            text_content = "\n".join(ordered_content)
             
             # 关闭文档
             doc.close()
